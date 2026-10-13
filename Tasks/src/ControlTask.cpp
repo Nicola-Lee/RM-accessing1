@@ -3,11 +3,22 @@
 #include "can.h"
 #include "tim.h"
 #include "Gm6020.h"
+#include <cmath>
+#include "Pid.h"
 
 namespace {
 
 // 0x205 = 0x204 + 1，因此电机拨码 ID 为 1
 Gm6020 g_gm6020(1);
+
+constexpr float kControlPeriodS = 0.001f;
+constexpr float kTargetAmplitudeRpm = 50.0f;
+constexpr float kTargetFrequencyHz = 0.1f;
+constexpr float kPi = 3.14159265358979323846f;
+
+Pid g_speed_pid(30.0f, 0.0f, 0.0f, 8000.0f, -8000.0f);
+
+volatile uint32_t g_last_feedback_ms = 0;
 
 CAN_TxHeaderTypeDef g_tx_header = {
     .StdId = 0x1FF,
@@ -26,7 +37,7 @@ void SendMotorCommand()
 
     // 当前阶段始终发送 0，确保不会意外转动。
     // 后续 PID 输出时再写：g_gm6020.setVoltage(...);
-    g_gm6020.setVoltage(0);
+    // g_gm6020.setVoltage(0);
 
     for (uint8_t i = 0; i < 8; ++i) {
         g_tx_data[i] = 0;
@@ -79,6 +90,26 @@ extern "C" void ControlTaskInit(void)
 
 extern "C" void MainTask(void)
 {
+    static uint32_t control_tick = 0;
+
+    // 连续 10 ms 未收到电机反馈时，停止输出，避免失联后继续驱动。
+    if ((HAL_GetTick() - g_last_feedback_ms) > 10U) {
+        g_speed_pid.reset();
+        g_gm6020.setVoltage(0);
+        SendMotorCommand();
+        return;
+    }
+
+    // 0.1 Hz 的周期为 10 s，即 10000 个 1 kHz 控制周期
+    float t = static_cast<float>(control_tick++ % 10000U) * kControlPeriodS;
+
+    float target_rpm =
+        kTargetAmplitudeRpm *
+        std::sin(2.0f * kPi * kTargetFrequencyHz * t);
+
+    float output = g_speed_pid.calc(target_rpm, g_gm6020.velRpm());
+
+    g_gm6020.setVoltage(static_cast<int16_t>(output));
     SendMotorCommand();
 }
 
@@ -86,6 +117,7 @@ extern "C" void CanFeedbackCallback(uint32_t std_id, const uint8_t *data)
 {
     if (std_id == g_gm6020.rxId()) {
         g_gm6020.decode(data);
+        g_last_feedback_ms = HAL_GetTick();
     }
 }
 

@@ -60,57 +60,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void CAN1_Filter_Init(void)
-{
-    CAN_FilterTypeDef filter = {0};
 
-    filter.FilterBank = 0;
-    filter.FilterMode = CAN_FILTERMODE_IDMASK;
-    filter.FilterScale = CAN_FILTERSCALE_32BIT;
-
-    // 暂时接收所有 CAN ID，便于调试
-    filter.FilterIdHigh = 0x0000;
-    filter.FilterIdLow = 0x0000;
-    filter.FilterMaskIdHigh = 0x0000;
-    filter.FilterMaskIdLow = 0x0000;
-
-    filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
-    filter.FilterActivation = ENABLE;
-    filter.SlaveStartFilterBank = 14;
-
-    if (HAL_CAN_ConfigFilter(&hcan1, &filter) != HAL_OK)
-    {
-        Error_Handler();
-    }
-  }
-
-
-volatile uint32_t can_rx_count = 0;
-volatile uint32_t can_rx_id = 0;
-volatile uint8_t can_rx_data[8];
-
-//回调
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-{
-    if (hcan->Instance == CAN1)
-    {
-        CAN_RxHeaderTypeDef rx_header;
-        uint8_t data[8];
-
-        if (HAL_CAN_GetRxMessage(
-                hcan, CAN_RX_FIFO0, &rx_header, data) == HAL_OK)
-        {
-            can_rx_id = rx_header.StdId;
-
-            for (uint8_t i = 0; i < 8; i++)
-            {
-                can_rx_data[i] = data[i];
-            }
-
-            can_rx_count++;
-        }
-    }
-}
 /* USER CODE END 0 */
 
 /**
@@ -155,17 +105,6 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   ControlTaskInit();
-  if (HAL_CAN_Start(&hcan1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  if (HAL_CAN_ActivateNotification(
-        &hcan1,
-        CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
