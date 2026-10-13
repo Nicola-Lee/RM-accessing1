@@ -18,6 +18,13 @@ constexpr float kPi = 3.14159265358979323846f;
 
 Pid g_speed_pid(30.0f, 0.0f, 0.0f, 8000.0f, -8000.0f);
 
+constexpr float kPositionAmplitudeRad = 0.5f;  // ±0.5 rad，约 ±29°
+constexpr float kPositionFrequencyHz = 0.05f;  // 周期 20 s
+
+volatile bool g_feedback_received = false;
+
+Pid g_position_pid(20.0f, 0.0f, 0.0f, 100.0f, -100.0f);
+
 volatile uint32_t g_last_feedback_ms = 0;
 
 CAN_TxHeaderTypeDef g_tx_header = {
@@ -92,23 +99,44 @@ extern "C" void MainTask(void)
 {
     // 记录运行周期次数
     static uint32_t control_tick = 0;
+    static bool position_initialized = false;
+    static float zero_position_rad = 0.0f;
 
     // 连续 10 ms 未收到电机反馈时，停止输出，避免失联后继续驱动。
-    if ((HAL_GetTick() - g_last_feedback_ms) > 10U) {
+    if (!g_feedback_received || (HAL_GetTick() - g_last_feedback_ms) > 10U) {
+        position_initialized = false;
+        control_tick = 0;
+        
+        g_position_pid.reset();
         g_speed_pid.reset();
         g_gm6020.setVoltage(0);
         SendMotorCommand();
         return;
     }
 
-    // 0.1 Hz 的周期为 10 s，即 10000 个 1 kHz 控制周期
-    float t = static_cast<float>(control_tick++ % 10000U) * kControlPeriodS;
+    // 避免上电后向编码器零点移动
+    if (!position_initialized) {
+        zero_position_rad = g_gm6020.angle();
+        position_initialized = true;
+        g_position_pid.reset();
+        g_speed_pid.reset();
+        return;
+    }
 
-    float target_rpm =
-        kTargetAmplitudeRpm *
-        std::sin(2.0f * kPi * kTargetFrequencyHz * t);
+    // 0.05Hz，1KHz下20000个周期
+    float t = static_cast<float>(control_tick++ % 20000U) * kControlPeriodS;
 
-    float output = g_speed_pid.calc(target_rpm, g_gm6020.velRpm());
+    // 做0.5rad正弦摆动
+    float target_position_rad =
+        zero_position_rad +
+        kPositionAmplitudeRad *
+        std::sin(2.0f * kPi * kPositionFrequencyHz * t);
+    
+    float target_speed_rpm = g_position_pid.calc(target_position_rad,g_gm6020.angle());
+        // std::sin(2.0f * kPi * kTargetFrequencyHz * t);
+        // 用位置控制时不用计算目标速度了
+    
+    float output = g_speed_pid.calc(target_speed_rpm, g_gm6020.velRpm());
 
     g_gm6020.setVoltage(static_cast<int16_t>(output));
     SendMotorCommand();
@@ -119,6 +147,7 @@ extern "C" void CanFeedbackCallback(uint32_t std_id, const uint8_t *data)
     if (std_id == g_gm6020.rxId()) {
         g_gm6020.decode(data);
         g_last_feedback_ms = HAL_GetTick();
+        g_feedback_received = true;
     }
 }
 
