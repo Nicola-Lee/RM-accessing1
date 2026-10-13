@@ -11,9 +11,9 @@ namespace {
 // 0x205 = 0x204 + 1，因此电机拨码 ID 为 1
 Gm6020 g_gm6020(1);
 
-constexpr float kControlPeriodS = 0.001f;
-constexpr float kTargetAmplitudeRpm = 50.0f;
-constexpr float kTargetFrequencyHz = 0.1f;
+constexpr float kControlPeriodS = 0.001f;// 周期
+constexpr float kTargetAmplitudeRpm = 50.0f;// 幅值
+constexpr float kTargetFrequencyHz = 0.1f;// 频率
 constexpr float kPi = 3.14159265358979323846f;
 
 Pid g_speed_pid(30.0f, 0.0f, 0.0f, 8000.0f, -8000.0f);
@@ -72,11 +72,11 @@ extern "C" void ControlTaskInit(void)
     if (HAL_CAN_ConfigFilter(&hcan1, &filter) != HAL_OK) {
         Error_Handler();
     }
-
+    // 启用CAN1
     if (HAL_CAN_Start(&hcan1) != HAL_OK) {
         Error_Handler();
     }
-
+    // 当FIFO0收到一帧合法信息时，中断
     if (HAL_CAN_ActivateNotification(
             &hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK) {
         Error_Handler();
@@ -90,6 +90,7 @@ extern "C" void ControlTaskInit(void)
 
 extern "C" void MainTask(void)
 {
+    // 记录运行周期次数
     static uint32_t control_tick = 0;
 
     // 连续 10 ms 未收到电机反馈时，停止输出，避免失联后继续驱动。
