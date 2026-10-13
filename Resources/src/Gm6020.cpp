@@ -1,3 +1,11 @@
+/*
+ * @Author: Nicola Lee nlee15428@gmail.com
+ * @Date: 2026-10-13 10:59:14
+ * @LastEditors: Nicola Lee nlee15428@gmail.com
+ * @LastEditTime: 2026-10-13 18:59:43
+ * @FilePath: \工程文件\Resources\src\Gm6020.cpp
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 #include "Gm6020.h"
 
 namespace {
@@ -21,9 +29,9 @@ uint32_t Gm6020::txId() const {
 }
 
 void Gm6020::decode(const uint8_t *data) {
-    if (has_feedback_){
-        uint16_t raw = static_cast<uint16_t>((data[0] << 8) | data[1]);
+    uint16_t raw = static_cast<uint16_t>((data[0] << 8) | data[1]);
 
+    if (has_feedback_){
         // 跨零检测: 一圈 8192, 相邻两次采样跳变超过半圈(4096)视为跨过零点
         int16_t diff = static_cast<int16_t>(raw - last_raw_angle_);
         if (diff > 4096)        full_turns_--;   // 8191 -> 0, 反向转过一圈
@@ -31,7 +39,7 @@ void Gm6020::decode(const uint8_t *data) {
     } else {
         has_feedback_ = true;
     }
-    
+
     last_raw_angle_ = raw;
     raw_angle_      = raw;
     raw_vel_rpm_    = static_cast<int16_t>((data[2] << 8) | data[3]);
