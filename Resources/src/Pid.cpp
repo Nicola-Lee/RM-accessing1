@@ -1,3 +1,11 @@
+/*
+ * @Author: Nicola Lee nlee15428@gmail.com
+ * @Date: 2026-10-13 10:59:14
+ * @LastEditors: Nicola Lee nlee15428@gmail.com
+ * @LastEditTime: 2026-10-15 20:51:39
+ * @FilePath: \code\Resources\src\Pid.cpp
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+ */
 #include "Pid.h"
 
 namespace {
@@ -26,13 +34,13 @@ float Pid::calc(float ref, float fdb) {
     float err   = ref - fdb;
     float deriv = err - last_err_;
 
-    integ_ += err;   // sum(e(j))
+    integ_ += err;
 
     float out = kp_ * err
               + ki_ * integ_ * kSampleTime
               + kd_ * deriv / kSampleTime;
 
-    // 输出限幅 + 积分回退(抗饱和): 输出饱和时撤销本拍积分累加,
+    // 输出限幅
     // 避免积分持续累积导致退出饱和过慢
     if (out > out_max_) {
         out = out_max_;

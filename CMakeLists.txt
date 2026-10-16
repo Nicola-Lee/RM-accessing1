@@ -25,7 +25,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 
 # ########################## USER CONFIG SECTION ##############################
 # Set the project name and the languages used
-project(project C CXX ASM) # TODO: change project name here
+project(accessing C CXX ASM) # TODO: change project name here
 
 # Specify user folders
 set(user_folders "Tasks" "Resources") # TODO Add your own user folders here

@@ -34,8 +34,8 @@ public:
     int16_t velRpm() const;  // 原始转速 (rpm)
 
     // ---- 控制 ----
-    void setVoltage(int16_t v);   // 电压给定 -25000~+25000
-    int16_t voltage() const;
+    void setCurrent(int16_t current);  // 转矩电流给定
+    int16_t command() const;
 
     // ---- 协议编解码 ----
     void decode(const uint8_t *data);   // 解析 8 字节反馈帧
@@ -43,7 +43,7 @@ public:
 
 private:
     uint8_t  id_;
-    int16_t  voltage_;
+    int16_t command_;
 
     uint16_t raw_angle_;      // 0~8191
     int16_t  raw_vel_rpm_;

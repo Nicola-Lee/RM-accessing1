@@ -2,7 +2,7 @@
  * @Author: Nicola Lee nlee15428@gmail.com
  * @Date: 2026-10-13 10:59:14
  * @LastEditors: Nicola Lee nlee15428@gmail.com
- * @LastEditTime: 2026-10-13 20:48:29
+ * @LastEditTime: 2026-10-14 19:09:42
  * @FilePath: \工程文件\Resources\src\Gm6020.cpp
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
  */
@@ -16,7 +16,7 @@ constexpr float    kRawToAmp   = 3.0f / 16384.0f; // 反馈电流 ±16384 对应
 }
 
 Gm6020::Gm6020(uint8_t id)
-    : id_(id), voltage_(0),
+    : id_(id), command_(0),
       raw_angle_(0), raw_vel_rpm_(0), raw_current_(0), raw_temp_(0),
       full_turns_(0), last_raw_angle_(0),has_feedback_(false){}
 
@@ -25,7 +25,7 @@ uint32_t Gm6020::rxId() const {
 }
 
 uint32_t Gm6020::txId() const {
-    return (id_ <= 4) ? 0x1FFu : 0x2FFu;   // 电压控制帧
+    return (id_ <= 4) ? 0x1FEu : 0x2FEu;   // 电流控制帧
 }
 
 void Gm6020::decode(const uint8_t *data) {
@@ -69,18 +69,14 @@ int16_t Gm6020::velRpm() const {
     return raw_vel_rpm_;
 }
 
-void Gm6020::setVoltage(int16_t v) {
-    if (v > 25000) {
-        voltage_ = 25000;
-    } else if (v < -25000) {
-        voltage_ = -25000;
-    } else {
-        voltage_ = v;
-    }
+void Gm6020::setCurrent(int16_t current)
+{
+    command_ = current;
 }
 
-int16_t Gm6020::voltage() const {
-    return voltage_;
+int16_t Gm6020::command() const
+{
+    return command_;
 }
 
 void Gm6020::encode(uint8_t *data) const {
@@ -89,6 +85,6 @@ void Gm6020::encode(uint8_t *data) const {
     //   0x2FF: ID 5->[0,1]  6->[2,3]  7->[4,5]
     uint8_t index = (id_ <= 4) ? static_cast<uint8_t>((id_ - 1) * 2)
                                : static_cast<uint8_t>((id_ - 5) * 2);
-    data[index]     = static_cast<uint8_t>((voltage_ >> 8) & 0xFF);
-    data[index + 1] = static_cast<uint8_t>(voltage_ & 0xFF);
+    data[index]     = static_cast<uint8_t>((command_ >> 8) & 0xFF);
+    data[index + 1] = static_cast<uint8_t>(command_ & 0xFF);
 }
